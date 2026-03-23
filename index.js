@@ -13,6 +13,10 @@ app.use(express.json());
 
 connectDB();
 
+app.get('/api/config/status', async (req, res) => { const gID = process.env.GOOGLE_CLIENT_ID || await auth.getSystemSetting('GOOGLE_CLIENT_ID'); const mID = process.env.MS_CLIENT_ID || await auth.getSystemSetting('MS_CLIENT_ID'); res.json({ google: !!gID, microsoft: !!mID, version: 'v1.8.0' }); });
+
+app.post('/api/config/setup', async (req, res) => { try { const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, MS_CLIENT_ID, MS_CLIENT_SECRET } = req.body; if (GOOGLE_CLIENT_ID) await auth.saveSystemSetting('GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID); if (GOOGLE_CLIENT_SECRET) await auth.saveSystemSetting('GOOGLE_CLIENT_SECRET', GOOGLE_CLIENT_SECRET); if (MS_CLIENT_ID) await auth.saveSystemSetting('MS_CLIENT_ID', MS_CLIENT_ID); if (MS_CLIENT_SECRET) await auth.saveSystemSetting('MS_CLIENT_SECRET', MS_CLIENT_SECRET); await auth.initGoogle(); res.json({ success: true }); } catch (err) { res.status(500).json({ message: err.message }); } });
+
 app.get('/api/debug-vars', (req, res) => {
     res.json({
         version: 'v1.7.4',
