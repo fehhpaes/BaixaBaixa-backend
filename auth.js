@@ -6,34 +6,34 @@ const { User, Setting } = require('./models');
 class AuthManager {
     constructor() {
         this.googleClient = null;
-        this.initGoogle();
+        // initGoogle is now async, so we'll call it where needed or via a startup trigger
     }
 
-    initGoogle() {
-        if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-            this.googleClient = new google.auth.OAuth2(
-                process.env.GOOGLE_CLIENT_ID,
-                process.env.GOOGLE_CLIENT_SECRET,
-                process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback'
-            );
+    async initGoogle() {
+        const gID = process.env.GOOGLE_CLIENT_ID || await this.getSystemSetting('GOOGLE_CLIENT_ID');
+        const gSecret = process.env.GOOGLE_CLIENT_SECRET || await this.getSystemSetting('GOOGLE_CLIENT_SECRET');
+        const gRedirect = process.env.GOOGLE_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/google/login-callback';
+        
+        if (gID && gSecret) {
+            this.googleClient = new google.auth.OAuth2(gID, gSecret, gRedirect);
         }
+    }
+
+    // --- SYSTEM CONFIG ---
+    async getSystemSetting(key) {
+        const setting = await Setting.findOne({ key, userId: null });
+        return setting ? setting.value : null;
+    }
+
+    async saveSystemSetting(key, value) {
+        await Setting.findOneAndUpdate(
+            { key, userId: null },
+            { value },
+            { upsert: true, new: true }
+        );
     }
 
     // --- USER AUTH ---
-    async register(email, password) {
-        const user = new User({ email, password });
-        await user.save();
-        return this.generateToken(user);
-    }
-
-    async login(email, password) {
-        const user = await User.findOne({ email });
-        if (!user || !(await user.comparePassword(password))) {
-            throw new Error('Credenciais inválidas');
-        }
-        return this.generateToken(user);
-    }
-
     generateToken(user) {
         return jwt.sign(
             { userId: user._id },
@@ -44,21 +44,18 @@ class AuthManager {
 
     // --- SOCIAL LOGIN HANDLERS ---
     async handleGoogleLogin(code) {
-        if (!this.googleClient) {
-            throw new Error('Google client not initialized.');
-        }
+        if (!this.googleClient) await this.initGoogle();
+        if (!this.googleClient) throw new Error('Google Auth não configurado no servidor.');
+
         const { tokens } = await this.googleClient.getToken(code);
-        this.googleClient.setCredentials(tokens); // Set credentials for idToken verification
+        this.googleClient.setCredentials(tokens);
         const ticket = await this.googleClient.verifyIdToken({
             idToken: tokens.id_token,
-            audience: process.env.GOOGLE_CLIENT_ID
+            audience: this.googleClient._clientId
         });
         const payload = ticket.getPayload();
         
-        let user = await User.findOne({ 
-            $or: [{ googleId: payload.sub }, { email: payload.email }] 
-        });
-
+        let user = await User.findOne({ $or: [{ googleId: payload.sub }, { email: payload.email }] });
         if (!user) {
             user = new User({ email: payload.email, googleId: payload.sub });
             await user.save();
@@ -66,18 +63,21 @@ class AuthManager {
             user.googleId = payload.sub;
             await user.save();
         }
-
-        const token = this.generateToken(user); // Use existing generateToken method
-        return { token, user };
+        return { token: this.generateToken(user), user };
     }
 
     async handleMicrosoftLogin(code) {
-        const redirectUri = process.env.MS_REDIRECT_URI || 'http://localhost:3001/api/auth/microsoft/login-callback';
+        const mID = process.env.MS_CLIENT_ID || await this.getSystemSetting('MS_CLIENT_ID');
+        const mSecret = process.env.MS_CLIENT_SECRET || await this.getSystemSetting('MS_CLIENT_SECRET');
+        const mLoginRedirect = process.env.MS_LOGIN_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/microsoft/login-callback';
+
+        if (!mID || !mSecret) throw new Error('Microsoft Auth não configurado no servidor.');
+
         const response = await axios.post('https://login.microsoftonline.com/common/oauth2/v2.0/token', new URLSearchParams({
-            client_id: process.env.MS_CLIENT_ID,
-            client_secret: process.env.MS_CLIENT_SECRET,
+            client_id: mID,
+            client_secret: mSecret,
             code,
-            redirect_uri: redirectUri,
+            redirect_uri: mLoginRedirect,
             grant_type: 'authorization_code'
         }));
 
@@ -85,61 +85,56 @@ class AuthManager {
             headers: { Authorization: `Bearer ${response.data.access_token}` }
         });
 
-        let user = await User.findOne({ 
-            $or: [{ microsoftId: profile.data.id }, { email: profile.data.mail || profile.data.userPrincipalName }] 
-        });
-
+        let user = await User.findOne({ $or: [{ microsoftId: profile.data.id }, { email: profile.data.mail || profile.data.userPrincipalName }] });
         if (!user) {
-            user = new User({ 
-                email: profile.data.mail || profile.data.userPrincipalName, 
-                microsoftId: profile.data.id 
-            });
+            user = new User({ email: profile.data.mail || profile.data.userPrincipalName, microsoftId: profile.data.id });
             await user.save();
         } else if (!user.microsoftId) {
             user.microsoftId = profile.data.id;
             await user.save();
         }
-
-        const token = this.generateToken(user);
-        return { token, user };
+        return { token: this.generateToken(user), user };
     }
 
-    // --- CLOUD AUTH ---
-    getGoogleAuthUrl(state = 'login') {
-        if (!this.googleClient) this.initGoogle(); if (!this.googleClient) throw new Error('Google Auth não configurado no servidor (Variáveis de Ambiente faltando).');
+    async getGoogleAuthUrl(state = 'login') {
+        if (!this.googleClient) await this.initGoogle();
+        if (!this.googleClient) return null;
         return this.googleClient.generateAuthUrl({
             access_type: 'offline',
             scope: ['https://www.googleapis.com/auth/drive.file', 'openid', 'email', 'profile'],
             prompt: 'consent',
-            state: state // Pass userId OR 'login' to callback
+            state: state
         });
     }
 
+    async getMicrosoftAuthUrl(state = 'login') {
+        const mID = process.env.MS_CLIENT_ID || await this.getSystemSetting('MS_CLIENT_ID');
+        const mRedirect = (state === 'login') 
+            ? (process.env.MS_LOGIN_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/microsoft/login-callback')
+            : (process.env.MS_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/microsoft/callback');
+
+        if (!mID) return null;
+        const scope = 'files.readwrite offline_access User.Read';
+        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${mID}&response_type=code&redirect_uri=${encodeURIComponent(mRedirect)}&response_mode=query&scope=${encodeURIComponent(scope)}&state=${state}`;
+    }
+
     async handleGoogleCallback(code, userId) {
+        if (!this.googleClient) await this.initGoogle();
         const { tokens } = await this.googleClient.getToken(code);
         await this.saveTokens(userId, 'google', tokens);
         return tokens;
     }
 
-    getMicrosoftAuthUrl(state = 'login') {
-        const clientId = process.env.MS_CLIENT_ID;
-        const redirectUri = process.env.MS_REDIRECT_URI || 'http://localhost:3001/api/auth/microsoft/callback';
-        // For login, use a different callback if needed, but here we'll use state to distinguish
-        const actualRedirect = state === 'login' 
-            ? (process.env.MS_LOGIN_REDIRECT_URI || 'http://localhost:3001/api/auth/microsoft/login-callback')
-            : redirectUri;
-
-        const scope = 'files.readwrite offline_access User.Read';
-        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(actualRedirect)}&response_mode=query&scope=${encodeURIComponent(scope)}&state=${state}`;
-    }
-
     async handleMicrosoftCallback(code, userId) {
-        const redirectUri = process.env.MS_REDIRECT_URI || 'http://localhost:3001/api/auth/microsoft/callback';
+        const mID = process.env.MS_CLIENT_ID || await this.getSystemSetting('MS_CLIENT_ID');
+        const mSecret = process.env.MS_CLIENT_SECRET || await this.getSystemSetting('MS_CLIENT_SECRET');
+        const mRedirect = process.env.MS_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/microsoft/callback';
+
         const response = await axios.post('https://login.microsoftonline.com/common/oauth2/v2.0/token', new URLSearchParams({
-            client_id: process.env.MS_CLIENT_ID,
-            client_secret: process.env.MS_CLIENT_SECRET,
+            client_id: mID,
+            client_secret: mSecret,
             code,
-            redirect_uri: redirectUri,
+            redirect_uri: mRedirect,
             grant_type: 'authorization_code'
         }));
         await this.saveTokens(userId, 'microsoft', response.data);
@@ -150,22 +145,13 @@ class AuthManager {
         await Setting.findOneAndUpdate(
             { userId, key: `${platform}_tokens` },
             { value: JSON.stringify(tokens) },
-            { upsidert: true, new: true, upsert: true }
+            { upsert: true }
         );
     }
 
     async getTokens(userId, platform) {
         const setting = await Setting.findOne({ userId, key: `${platform}_tokens` });
         return setting ? JSON.parse(setting.value) : null;
-    }
-
-    async refreshGoogleTokens(userId) {
-        const tokens = await this.getTokens(userId, 'google');
-        if (!tokens || !tokens.refresh_token) return null;
-        this.googleClient.setCredentials(tokens);
-        const { credentials } = await this.googleClient.refreshAccessToken();
-        await this.saveTokens(userId, 'google', credentials);
-        return credentials;
     }
 }
 

@@ -22,7 +22,7 @@ UserSchema.methods.comparePassword = function(candidatePassword) {
 
 // Channel Schema
 const ChannelSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     name: { type: String, required: true },
     url: { type: String, required: true },
     type: { type: String, enum: ['live', 'posts'], default: 'live' },
