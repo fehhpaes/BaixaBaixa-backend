@@ -127,7 +127,7 @@ app.get('/api/auth/google/url', (req, res) => {
 const PORT = process.env.PORT || 3001;
 
 // SPA Fallback for React Router
-app.get('/*', (req, res) => {
+app.get('*all', (req, res) => {
     res.sendFile(path.join(__dirname, 'client/dist/index.html'));
 });
 
