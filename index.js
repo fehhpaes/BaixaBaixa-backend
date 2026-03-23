@@ -13,6 +13,16 @@ app.use(express.json());
 
 connectDB();
 
+app.get('/api/debug-vars', (req, res) => {
+    res.json({
+        version: 'v1.7.4',
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.substring(0, 5) + '...' : 'MISSING',
+        MS_CLIENT_ID: process.env.MS_CLIENT_ID ? process.env.MS_CLIENT_ID.substring(0, 5) + '...' : 'MISSING',
+        ALLOWED_ORIGIN: process.env.ALLOWED_ORIGIN || 'NOT SET',
+        NODE_ENV: process.env.NODE_ENV
+    });
+});
+
 app.get('/api/auth/google/login-url', (req, res) => {
     res.json({ url: auth.getGoogleAuthUrl('login') });
 });
