@@ -16,7 +16,7 @@ app.use(express.json());
 connectDB();
 
 // --- PUBLIC AUTH ROUTES ---
-app.post('/api/auth/register', async (req, res) => {
+// [v1.7.0 Disabled] app.post('/api/auth/register', async (req, res) => {
     const { email, password } = req.body;
     try {
         const token = await auth.register(email, password);
@@ -26,7 +26,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+// [v1.7.0 Disabled] app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const token = await auth.login(email, password);
