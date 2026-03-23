@@ -13,41 +13,55 @@ app.use(express.json());
 
 connectDB();
 
-app.get('/api/config/status', async (req, res) => { const gID = process.env.GOOGLE_CLIENT_ID || await auth.getSystemSetting('GOOGLE_CLIENT_ID'); const mID = process.env.MS_CLIENT_ID || await auth.getSystemSetting('MS_CLIENT_ID'); res.json({ google: !!gID, microsoft: !!mID, version: 'v1.8.0' }); });
+app.get('/api/config/status', async (req, res) => { 
+    const gID = process.env.GOOGLE_CLIENT_ID || await auth.getSystemSetting('GOOGLE_CLIENT_ID'); 
+    const mID = process.env.MS_CLIENT_ID || await auth.getSystemSetting('MS_CLIENT_ID'); 
+    res.json({ google: !!gID, microsoft: !!mID, version: 'v1.8.1' }); 
+});
 
-app.post('/api/config/setup', async (req, res) => { try { const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, MS_CLIENT_ID, MS_CLIENT_SECRET } = req.body; if (GOOGLE_CLIENT_ID) await auth.saveSystemSetting('GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID); if (GOOGLE_CLIENT_SECRET) await auth.saveSystemSetting('GOOGLE_CLIENT_SECRET', GOOGLE_CLIENT_SECRET); if (MS_CLIENT_ID) await auth.saveSystemSetting('MS_CLIENT_ID', MS_CLIENT_ID); if (MS_CLIENT_SECRET) await auth.saveSystemSetting('MS_CLIENT_SECRET', MS_CLIENT_SECRET); await auth.initGoogle(); res.json({ success: true }); } catch (err) { res.status(500).json({ message: err.message }); } });
+app.post('/api/config/setup', async (req, res) => { 
+    try { 
+        const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, MS_CLIENT_ID, MS_CLIENT_SECRET } = req.body; 
+        if (GOOGLE_CLIENT_ID) await auth.saveSystemSetting('GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID); 
+        if (GOOGLE_CLIENT_SECRET) await auth.saveSystemSetting('GOOGLE_CLIENT_SECRET', GOOGLE_CLIENT_SECRET); 
+        if (MS_CLIENT_ID) await auth.saveSystemSetting('MS_CLIENT_ID', MS_CLIENT_ID); 
+        if (MS_CLIENT_SECRET) await auth.saveSystemSetting('MS_CLIENT_SECRET', MS_CLIENT_SECRET); 
+        await auth.initGoogle(); 
+        res.json({ success: true }); 
+    } catch (err) { 
+        res.status(500).json({ message: err.message }); 
+    } 
+});
 
 app.get('/api/debug-vars', (req, res) => {
     res.json({
-        version: 'v1.7.4',
-        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.substring(0, 5) + '...' : 'MISSING',
-        MS_CLIENT_ID: process.env.MS_CLIENT_ID ? process.env.MS_CLIENT_ID.substring(0, 5) + '...' : 'MISSING',
-        ALLOWED_ORIGIN: process.env.ALLOWED_ORIGIN || 'NOT SET',
-        NODE_ENV: process.env.NODE_ENV
+        version: 'v1.8.1',
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? 'SET' : 'MISSING',
+        MS_CLIENT_ID: process.env.MS_CLIENT_ID ? 'SET' : 'MISSING'
     });
 });
 
-app.get('/api/auth/google/login-url', (req, res) => {
-    res.json({ url: auth.getGoogleAuthUrl('login') });
+app.get('/api/auth/google/login-url', async (req, res) => {
+    res.json({ url: await auth.getGoogleAuthUrl('login') });
 });
 
 app.get('/api/auth/google/login-callback', async (req, res) => {
     try {
         const { token } = await auth.handleGoogleLogin(req.query.code);
-        res.send(`<script>window.opener.postMessage({ token: "${token}" }, "*"); window.close();</script>`);
+        res.send('<script>window.opener.postMessage({ token: "' + token + '" }, "*"); window.close();</script>');
     } catch (err) {
         res.status(500).send('Erro no login social');
     }
 });
 
-app.get('/api/auth/microsoft/login-url', (req, res) => {
-    res.json({ url: auth.getMicrosoftAuthUrl('login') });
+app.get('/api/auth/microsoft/login-url', async (req, res) => {
+    res.json({ url: await auth.getMicrosoftAuthUrl('login') });
 });
 
 app.get('/api/auth/microsoft/login-callback', async (req, res) => {
     try {
         const { token } = await auth.handleMicrosoftLogin(req.query.code);
-        res.send(`<script>window.opener.postMessage({ token: "${token}" }, "*"); window.close();</script>`);
+        res.send('<script>window.opener.postMessage({ token: "' + token + '" }, "*"); window.close();</script>');
     } catch (err) {
         res.status(500).send('Erro no login social');
     }
@@ -57,7 +71,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
     const { code, state } = req.query;
     try {
         await auth.handleGoogleCallback(code, state);
-        res.send('<h1>Drive Conectado!</h1><script>setTimeout(() => window.close(), 2000)</script>');
+        res.send("<h1>Drive Conectado!</h1><script>setTimeout(() => window.close(), 2000)</script>");
     } catch (err) {
         res.status(500).send('Erro na conexão: ' + err.message);
     }
@@ -108,7 +122,7 @@ app.get('/api/auth/google/url', (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, async () => {
-    console.log(`[BaixaBaixa] Backend Engine running on port ${PORT}`);
+    console.log("[BaixaBaixa] Backend Engine running on port " + PORT);
     const activeChannels = await Channel.find({ auto_download: true });
     activeChannels.forEach(chan => {
         monitor.startMonitoring(chan._id, chan.url, chan.type, chan.save_path, chan.userId);
