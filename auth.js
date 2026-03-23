@@ -106,7 +106,7 @@ class AuthManager {
 
     // --- CLOUD AUTH ---
     getGoogleAuthUrl(state = 'login') {
-        if (!this.googleClient) return null;
+        if (!this.googleClient) throw new Error('Google Auth não configurado no servidor (Variáveis de Ambiente faltando).');
         return this.googleClient.generateAuthUrl({
             access_type: 'offline',
             scope: ['https://www.googleapis.com/auth/drive.file', 'openid', 'email', 'profile'],
