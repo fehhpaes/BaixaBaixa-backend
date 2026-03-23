@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: baixabaixa
+    runtime: docker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # User must provide
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STREAM_TO_CLOUD
+        value: "true"
+    healthCheckPath: /api/channels

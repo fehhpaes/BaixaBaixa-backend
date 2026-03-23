@@ -1,3 +1,10 @@
 node_modules/  
 baixa.db  
 .env 
+*.mp4
+*.mp3
+*.mkv
+*.part
+test_downloads/
+client/dist/
+client/node_modules/

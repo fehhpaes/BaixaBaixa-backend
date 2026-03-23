@@ -5,11 +5,15 @@ const monitor = require('./monitor');
 const auth = require('./auth');
 const authMiddleware = require('./middleware/auth');
 const { Channel } = require('./models');
+const path = require('path');
 
 const app = express();
 const allowedOrigin = process.env.ALLOWED_ORIGIN ? process.env.ALLOWED_ORIGIN.replace(/\/$/, "") : '*';
 app.use(cors({ origin: allowedOrigin }));
 app.use(express.json());
+
+// Serve static frontend
+app.use(express.static(path.join(__dirname, 'client/dist')));
 
 connectDB();
 
@@ -121,6 +125,12 @@ app.get('/api/auth/google/url', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
+
+// SPA Fallback for React Router
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client/dist/index.html'));
+});
+
 app.listen(PORT, async () => {
     console.log("[BaixaBaixa] Backend Engine running on port " + PORT);
     const activeChannels = await Channel.find({ auto_download: true });
