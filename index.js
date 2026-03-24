@@ -16,8 +16,6 @@ app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// Serve static frontend
-app.use(express.static(path.join(__dirname, 'client/dist')));
 
 connectDB();
 
@@ -143,16 +141,26 @@ app.get('/api/auth/status', async (req, res) => {
     res.json({ google: !!google, microsoft: !!microsoft });
 });
 
-app.get('/api/auth/google/url', (req, res) => {
-    res.json({ url: auth.getGoogleAuthUrl(req.userId) });
+});
+
+// Master Google Auth (Admin Only)
+app.get('/api/admin/google/auth', async (req, res) => {
+    res.json({ url: await auth.getGoogleAuthUrl('master') });
+});
+
+app.get('/api/admin/google/callback', async (req, res) => {
+    const { code } = req.query;
+    try {
+        await auth.handleGoogleLogin(code, 'master');
+        res.send("<h1>Google Drive Mestre Conectado com Sucesso!</h1><p>Você pode fechar esta aba.</p>");
+    } catch (err) {
+        console.error('[Master Auth Error]:', err);
+        res.status(500).send('Erro na conexão mestre: ' + err.message);
+    }
 });
 
 const PORT = process.env.PORT || 3001;
 
-// SPA Fallback for React Router
-app.get('*all', (req, res) => {
-    res.sendFile(path.join(__dirname, 'client/dist/index.html'));
-});
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("[BaixaBaixa] Backend Engine running on port " + PORT);

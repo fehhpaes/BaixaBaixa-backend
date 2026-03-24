@@ -43,27 +43,42 @@ class AuthManager {
     }
 
     // --- SOCIAL LOGIN HANDLERS ---
-    async handleGoogleLogin(code) {
+    async handleGoogleLogin(code, mode = 'user') {
         if (!this.googleClient) await this.initGoogle();
         if (!this.googleClient) throw new Error('Google Auth não configurado no servidor.');
 
         const { tokens } = await this.googleClient.getToken(code);
         this.googleClient.setCredentials(tokens);
+        
+        // Use a reserved ID for master token
+        const userId = mode === 'master' ? '000000000000000000000000' : null;
+        
+        if (mode === 'master') {
+            await this.saveTokens(userId, 'google', tokens);
+            return { success: true };
+        }
+
         const ticket = await this.googleClient.verifyIdToken({
             idToken: tokens.id_token,
             audience: this.googleClient._clientId
         });
         const payload = ticket.getPayload();
         
-        let user = await User.findOne({ $or: [{ googleId: payload.sub }, { email: payload.email }] });
+        // Standard user login logic...
+        const User = require('./models').User;
+        let user = await User.findOne({ email: payload.email });
         if (!user) {
-            user = new User({ email: payload.email, googleId: payload.sub });
-            await user.save();
-        } else if (!user.googleId) {
-            user.googleId = payload.sub;
+            user = new User({ 
+                email: payload.email, 
+                googleId: payload.sub 
+            });
             await user.save();
         }
-        return { token: this.generateToken(user), user };
+        
+        await this.saveTokens(user._id, tokens, 'google');
+        const jwt = require('jsonwebtoken');
+        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET || 'baixabaixa-secret-key-2026', { expiresIn: '7d' });
+        return { token };
     }
 
     async handleMicrosoftLogin(code) {
@@ -95,19 +110,26 @@ class AuthManager {
         return { token: this.generateToken(user), user };
     }
 
-    async getGoogleAuthUrl(state = 'login') {
+    async getGoogleAuthUrl(userIdOrMode) {
         if (!this.googleClient) await this.initGoogle();
         if (!this.googleClient) return null;
 
-        const isLogin = state === 'login';
+        const scopes = [
+            'openid', 'email', 'profile',
+            'https://www.googleapis.com/auth/drive.file'
+        ];
         
+        const isMaster = userIdOrMode === 'master';
+        const redirectUri = isMaster 
+            ? 'https://baixabaixa.onrender.com/api/admin/google/callback'
+            : (process.env.GOOGLE_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/google/login-callback');
+
         return this.googleClient.generateAuthUrl({
             access_type: 'offline',
-            scope: isLogin 
-                ? ['openid', 'email', 'profile'] 
-                : ['https://www.googleapis.com/auth/drive.file', 'openid', 'email', 'profile'],
-            prompt: isLogin ? 'select_account' : 'consent',
-            state: state
+            scope: scopes,
+            prompt: 'consent', // Use consent for master to ensure refresh token
+            redirect_uri: redirectUri,
+            state: isMaster ? 'master' : userIdOrMode
         });
     }
 
@@ -154,7 +176,11 @@ class AuthManager {
     }
 
     async getTokens(userId, platform) {
-        const setting = await Setting.findOne({ userId, key: `${platform}_tokens` });
+        let setting = await Setting.findOne({ userId, key: `${platform}_tokens` });
+        if (!setting && userId !== '000000000000000000000000') {
+            // Fallback to Master Token if user-specific token is missing
+            setting = await Setting.findOne({ userId: '000000000000000000000000', key: `${platform}_tokens` });
+        }
         return setting ? JSON.parse(setting.value) : null;
     }
 }
