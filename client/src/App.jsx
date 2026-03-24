@@ -107,14 +107,11 @@ function App() {
   };
 
   const [configStatus, setConfigStatus] = useState({ google: false, microsoft: false, loading: true });
-  const [setupData, setSetupData] = useState({ GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '', MS_CLIENT_ID: '', MS_CLIENT_SECRET: '' });
-  const [isSetupMode, setIsSetupMode] = useState(false);
 
   const fetchConfigStatus = async () => {
     try {
       const res = await axios.get(`${API_BASE}/config/status`);
       setConfigStatus({ ...res.data, loading: false });
-      if (!res.data.google && !res.data.microsoft) setIsSetupMode(true);
     } catch (err) {
       setConfigStatus(prev => ({ ...prev, loading: false }));
     }
@@ -123,18 +120,6 @@ function App() {
   useEffect(() => {
     fetchConfigStatus();
   }, []);
-
-  const handleSaveSetup = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.post(`${API_BASE}/config/setup`, setupData);
-      alert('Configuração salva com sucesso!');
-      setIsSetupMode(false);
-      fetchConfigStatus();
-    } catch (err) {
-      alert('Erro ao salvar configuração.');
-    }
-  };
 
   const handleSocialLogin = async (platform) => {
     try {
@@ -157,45 +142,6 @@ function App() {
 
   if (configStatus.loading) return <div className="dashboard" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>Carregando...</div>;
 
-  if (isSetupMode) {
-    return (
-      <div className="dashboard" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg)' }}>
-        <div className="glass-card" style={{ padding: '3rem', width: '100%', maxWidth: '550px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h2 style={{ margin: 0 }}>⚙️ Configuração Mágica</h2>
-            <button onClick={() => setIsSetupMode(false)} style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.5, cursor: 'pointer' }}>Fechar</button>
-          </div>
-          <p style={{ opacity: 0.7, marginBottom: '2rem', textAlign: 'center', fontSize: '0.9rem' }}>
-            Para ativar o login, registramos seu site no Google e Microsoft. Siga os links abaixo:
-          </p>
-
-          <form onSubmit={handleSaveSetup} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div className="glass-card" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0 }}>Google Cloud {configStatus.google && '✅'}</h3>
-                <a href="https://console.cloud.google.com/apis/credentials/oauthclient" target="_blank" className="btn-secondary" style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem' }}>Abrir Console</a>
-              </div>
-              <p style={{ fontSize: '0.75rem', opacity: 0.6, marginBottom: '1rem' }}>Use o Redirect URI:<br/><code style={{ color: 'var(--primary)', wordBreak: 'break-all' }}>https://baixabaixa.onrender.com/api/auth/google/login-callback</code></p>
-              <input placeholder="Client ID do Google" value={setupData.GOOGLE_CLIENT_ID} onChange={e => setSetupData({...setupData, GOOGLE_CLIENT_ID: e.target.value})} style={{ marginBottom: '0.5rem' }} />
-              <input type="password" placeholder="Client Secret do Google" value={setupData.GOOGLE_CLIENT_SECRET} onChange={e => setSetupData({...setupData, GOOGLE_CLIENT_SECRET: e.target.value})} />
-            </div>
-
-            <div className="glass-card" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0 }}>Microsoft Azure {configStatus.microsoft && '✅'}</h3>
-                <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/CreateApplication" target="_blank" className="btn-secondary" style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem' }}>Abrir Portal</a>
-              </div>
-              <p style={{ fontSize: '0.75rem', opacity: 0.6, marginBottom: '1rem' }}>Use o Redirect URI:<br/><code style={{ color: 'var(--primary)', wordBreak: 'break-all' }}>https://baixabaixa.onrender.com/api/auth/microsoft/login-callback</code></p>
-              <input placeholder="Application (client) ID" value={setupData.MS_CLIENT_ID} onChange={e => setSetupData({...setupData, MS_CLIENT_ID: e.target.value})} style={{ marginBottom: '0.5rem' }} />
-              <input type="password" placeholder="Client Secret da Microsoft" value={setupData.MS_CLIENT_SECRET} onChange={e => setSetupData({...setupData, MS_CLIENT_SECRET: e.target.value})} />
-            </div>
-
-            <button type="submit" className="btn-primary" style={{ padding: '1rem', marginTop: '1rem' }}>🚀 Salvar e Ativar</button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   if (!token) {
     return (
@@ -221,9 +167,6 @@ function App() {
               <p style={{ color: '#ff4b2b', fontSize: '0.9rem' }}>Nenhum provedor de login configurado.</p>
             )}
 
-            <button onClick={() => setIsSetupMode(true)} style={{ marginTop: '1rem', background: 'none', border: '1px dashed rgba(255,255,255,0.2)', padding: '0.8rem', cursor: 'pointer', borderRadius: '8px', color: '#aaa', fontSize: '0.8rem' }}>
-              ⚙️ Fazer Configurações (Admin)
-            </button>
           </div>
 
           <div style={{ marginTop: '2rem', fontSize: '0.8rem', opacity: 0.5 }}>
