@@ -73,5 +73,3 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {
     console.log("[BaixaBaixa] Cloud Coordinator API running on port " + PORT);
 });
-});
-});
