@@ -148,25 +148,28 @@ function App() {
       <div className="dashboard" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <div className="glass-card" style={{ padding: '3rem', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
           <h1 style={{ marginBottom: '1rem' }}>BaixaBaixa</h1>
-          <p style={{ opacity: 0.7, marginBottom: '2.5rem' }}>Login Obrigatório</p>
+          <p style={{ opacity: 0.7, marginBottom: '2.5rem' }}>{isRegister ? 'Criar Conta' : 'Login'}</p>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {configStatus.google && (
-              <button onClick={() => handleSocialLogin('google')} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', padding: '1rem' }}>
-                <img src="https://www.google.com/favicon.ico" width="20" alt="G" /> Entrar com Google
-              </button>
-            )}
+          <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <input type="email" placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} required />
+            <input type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required />
+            <button type="submit" className="btn-primary" style={{ padding: '1rem' }}>
+              {isRegister ? 'Registrar' : 'Entrar'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <button onClick={() => setIsRegister(!isRegister)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>
+              {isRegister ? 'Já tenho conta? Login' : 'Não tem conta? Registre-se'}
+            </button>
             
-            {configStatus.microsoft && (
-              <button onClick={() => handleSocialLogin('microsoft')} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', padding: '1rem' }}>
-                <img src="https://www.microsoft.com/favicon.ico" width="20" alt="M" /> Entrar com Microsoft
+            <hr style={{ opacity: 0.1, margin: '1rem 0' }} />
+
+            {configStatus.google && (
+              <button onClick={() => handleSocialLogin('google')} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', padding: '0.8rem', fontSize: '0.9rem' }}>
+                <img src="https://www.google.com/favicon.ico" width="16" alt="G" /> Entrar com Google
               </button>
             )}
-
-            {!configStatus.google && !configStatus.microsoft && (
-              <p style={{ color: '#ff4b2b', fontSize: '0.9rem' }}>Nenhum provedor de login configurado.</p>
-            )}
-
           </div>
 
           <div style={{ marginTop: '2rem', fontSize: '0.8rem', opacity: 0.5 }}>
