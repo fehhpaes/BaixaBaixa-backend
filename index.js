@@ -12,34 +12,27 @@ const allowedOrigin = process.env.ALLOWED_ORIGIN ? process.env.ALLOWED_ORIGIN.re
 app.use(cors({ origin: allowedOrigin }));
 app.use(express.json());
 
+// Health Check for Render
+app.get('/', (req, res) => res.json({ status: 'ok', message: 'BaixaBaixa API is running' }));
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
 // Serve static frontend
 app.use(express.static(path.join(__dirname, 'client/dist')));
 
 connectDB();
 
 app.get('/api/config/status', async (req, res) => { 
-    const gID = process.env.GOOGLE_CLIENT_ID || await auth.getSystemSetting('GOOGLE_CLIENT_ID'); 
-    const mID = process.env.MS_CLIENT_ID || await auth.getSystemSetting('MS_CLIENT_ID'); 
-    res.json({ google: !!gID, microsoft: !!mID, version: 'v1.8.1' }); 
+    res.json({ 
+        google: !!process.env.GOOGLE_CLIENT_ID, 
+        microsoft: !!process.env.MS_CLIENT_ID, 
+        version: 'v1.8.2' 
+    }); 
 });
 
-app.post('/api/config/setup', async (req, res) => { 
-    try { 
-        const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, MS_CLIENT_ID, MS_CLIENT_SECRET } = req.body; 
-        if (GOOGLE_CLIENT_ID) await auth.saveSystemSetting('GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID); 
-        if (GOOGLE_CLIENT_SECRET) await auth.saveSystemSetting('GOOGLE_CLIENT_SECRET', GOOGLE_CLIENT_SECRET); 
-        if (MS_CLIENT_ID) await auth.saveSystemSetting('MS_CLIENT_ID', MS_CLIENT_ID); 
-        if (MS_CLIENT_SECRET) await auth.saveSystemSetting('MS_CLIENT_SECRET', MS_CLIENT_SECRET); 
-        await auth.initGoogle(); 
-        res.json({ success: true }); 
-    } catch (err) { 
-        res.status(500).json({ message: err.message }); 
-    } 
-});
 
 app.get('/api/debug-vars', (req, res) => {
     res.json({
-        version: 'v1.8.1',
+        version: 'v1.8.2',
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? 'SET' : 'MISSING',
         MS_CLIENT_ID: process.env.MS_CLIENT_ID ? 'SET' : 'MISSING'
     });
@@ -131,7 +124,7 @@ app.get('*all', (req, res) => {
     res.sendFile(path.join(__dirname, 'client/dist/index.html'));
 });
 
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log("[BaixaBaixa] Backend Engine running on port " + PORT);
     const activeChannels = await Channel.find({ auto_download: true });
     activeChannels.forEach(chan => {

@@ -10,8 +10,8 @@ class AuthManager {
     }
 
     async initGoogle() {
-        const gID = process.env.GOOGLE_CLIENT_ID || await this.getSystemSetting('GOOGLE_CLIENT_ID');
-        const gSecret = process.env.GOOGLE_CLIENT_SECRET || await this.getSystemSetting('GOOGLE_CLIENT_SECRET');
+        const gID = process.env.GOOGLE_CLIENT_ID;
+        const gSecret = process.env.GOOGLE_CLIENT_SECRET;
         const gRedirect = process.env.GOOGLE_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/google/login-callback';
         
         if (gID && gSecret) {
@@ -67,12 +67,11 @@ class AuthManager {
     }
 
     async handleMicrosoftLogin(code) {
-        const mID = process.env.MS_CLIENT_ID || await this.getSystemSetting('MS_CLIENT_ID');
-        const mSecret = process.env.MS_CLIENT_SECRET || await this.getSystemSetting('MS_CLIENT_SECRET');
+        const mID = process.env.MS_CLIENT_ID;
+        const mSecret = process.env.MS_CLIENT_SECRET;
         const mLoginRedirect = process.env.MS_LOGIN_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/microsoft/login-callback';
 
         if (!mID || !mSecret) throw new Error('Microsoft Auth não configurado no servidor.');
-
         const response = await axios.post('https://login.microsoftonline.com/common/oauth2/v2.0/token', new URLSearchParams({
             client_id: mID,
             client_secret: mSecret,
@@ -99,16 +98,21 @@ class AuthManager {
     async getGoogleAuthUrl(state = 'login') {
         if (!this.googleClient) await this.initGoogle();
         if (!this.googleClient) return null;
+
+        const isLogin = state === 'login';
+        
         return this.googleClient.generateAuthUrl({
             access_type: 'offline',
-            scope: ['https://www.googleapis.com/auth/drive.file', 'openid', 'email', 'profile'],
-            prompt: 'consent',
+            scope: isLogin 
+                ? ['openid', 'email', 'profile'] 
+                : ['https://www.googleapis.com/auth/drive.file', 'openid', 'email', 'profile'],
+            prompt: isLogin ? 'select_account' : 'consent',
             state: state
         });
     }
 
     async getMicrosoftAuthUrl(state = 'login') {
-        const mID = process.env.MS_CLIENT_ID || await this.getSystemSetting('MS_CLIENT_ID');
+        const mID = process.env.MS_CLIENT_ID;
         const mRedirect = (state === 'login') 
             ? (process.env.MS_LOGIN_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/microsoft/login-callback')
             : (process.env.MS_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/microsoft/callback');
@@ -126,8 +130,8 @@ class AuthManager {
     }
 
     async handleMicrosoftCallback(code, userId) {
-        const mID = process.env.MS_CLIENT_ID || await this.getSystemSetting('MS_CLIENT_ID');
-        const mSecret = process.env.MS_CLIENT_SECRET || await this.getSystemSetting('MS_CLIENT_SECRET');
+        const mID = process.env.MS_CLIENT_ID;
+        const mSecret = process.env.MS_CLIENT_SECRET;
         const mRedirect = process.env.MS_REDIRECT_URI || 'https://baixabaixa.onrender.com/api/auth/microsoft/callback';
 
         const response = await axios.post('https://login.microsoftonline.com/common/oauth2/v2.0/token', new URLSearchParams({

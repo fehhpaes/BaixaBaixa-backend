@@ -21,7 +21,9 @@ class MonitorManager {
         if (this.processes.has(channelId.toString())) return;
 
         console.log(`[Live Monitor] Starting for ${url} (User: ${userId})`);
-        const ytDlpPath = path.resolve(__dirname, process.platform === 'win32' ? '../yt-dlp.exe' : 'yt-dlp');
+        const ytDlpPath = process.platform === 'win32' 
+            ? path.resolve(__dirname, '../yt-dlp.exe') 
+            : 'yt-dlp';
         
         const isCloudStreaming = process.env.STREAM_TO_CLOUD === 'true';
         const downloadDir = savePath ? savePath : 'downloads';
@@ -71,7 +73,9 @@ class MonitorManager {
     }
 
     async runGalleryDl(channelId, url, savePath = null, userId) {
-        const galleryPath = path.resolve(__dirname, process.platform === 'win32' ? '../gallery-dl.exe' : 'gallery-dl');
+        const galleryPath = process.platform === 'win32' 
+            ? path.resolve(__dirname, '../gallery-dl.exe') 
+            : 'gallery-dl';
         const downloadDir = savePath ? path.resolve(__dirname, savePath) : path.resolve(__dirname, 'downloads');
 
         await Channel.findByIdAndUpdate(channelId, { status: 'downloading' });
@@ -86,12 +90,16 @@ class MonitorManager {
     async downloadAll(channelId, url, type, savePath = null, userId) {
         const downloadDir = savePath ? savePath : 'downloads';
         if (type === 'live') {
-            const ytDlpPath = path.resolve(__dirname, process.platform === 'win32' ? '../yt-dlp.exe' : 'yt-dlp');
+            const ytDlpPath = process.platform === 'win32' 
+                ? path.resolve(__dirname, '../yt-dlp.exe') 
+                : 'yt-dlp';
             const outputTemplate = path.join(path.resolve(__dirname, downloadDir), `%(uploader)s/%(title)s [%(upload_date)s-%(timestamp)s].%(ext)s`);
             const args = [url, '--yes-playlist', '--format', 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best', '--merge-output-format', 'mp4', '--output', outputTemplate];
             spawn(ytDlpPath, args);
         } else {
-            const galleryPath = path.resolve(__dirname, process.platform === 'win32' ? '../gallery-dl.exe' : 'gallery-dl');
+            const galleryPath = process.platform === 'win32' 
+                ? path.resolve(__dirname, '../gallery-dl.exe') 
+                : 'gallery-dl';
             const targetDir = path.resolve(__dirname, downloadDir);
             exec(`"${galleryPath}" --directory "${targetDir}" "${url}"`, () => {
                 storage.moveFile(targetDir, '', userId);
