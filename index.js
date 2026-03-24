@@ -12,8 +12,6 @@ const allowedOrigin = process.env.ALLOWED_ORIGIN ? process.env.ALLOWED_ORIGIN.re
 app.use(cors({ origin: allowedOrigin }));
 app.use(express.json());
 
-// Health Check for Render
-app.get('/', (req, res) => res.json({ status: 'ok', message: 'BaixaBaixa API is running' }));
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // Serve static frontend
