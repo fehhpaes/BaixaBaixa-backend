@@ -141,8 +141,6 @@ app.get('/api/auth/status', async (req, res) => {
     res.json({ google: !!google, microsoft: !!microsoft });
 });
 
-});
-
 // Master Google Auth (Admin Only)
 app.get('/api/admin/google/auth', async (req, res) => {
     res.json({ url: await auth.getGoogleAuthUrl('master') });
