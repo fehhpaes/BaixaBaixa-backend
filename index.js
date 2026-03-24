@@ -45,6 +45,7 @@ app.get('/api/auth/google/login-callback', async (req, res) => {
         const { token } = await auth.handleGoogleLogin(req.query.code);
         res.send('<script>window.opener.postMessage({ token: "' + token + '" }, "*"); window.close();</script>');
     } catch (err) {
+        console.error('[Login Error]:', err.response?.data || err.message || err);
         res.status(500).send('Erro no login social');
     }
 });
@@ -58,6 +59,7 @@ app.get('/api/auth/microsoft/login-callback', async (req, res) => {
         const { token } = await auth.handleMicrosoftLogin(req.query.code);
         res.send('<script>window.opener.postMessage({ token: "' + token + '" }, "*"); window.close();</script>');
     } catch (err) {
+        console.error('[Login Error]:', err.response?.data || err.message || err);
         res.status(500).send('Erro no login social');
     }
 });
