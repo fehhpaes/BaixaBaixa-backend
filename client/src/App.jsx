@@ -170,6 +170,11 @@ function App() {
           </div>
 
           <div style={{ marginTop: '2rem', fontSize: '0.8rem', opacity: 0.5 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
+              <a href="#" style={{ color: 'inherit', textDecoration: 'underline' }}>Privacidade</a>
+              <a href="#" style={{ color: 'inherit', textDecoration: 'underline' }}>Termos</a>
+              <a href="#" style={{ color: 'inherit', textDecoration: 'underline' }}>Sobre</a>
+            </div>
             Ao entrar, você concorda com nossos Termos de Uso.
           </div>
         </div>
