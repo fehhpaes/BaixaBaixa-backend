@@ -52,9 +52,10 @@ app.get('/api/agent/work', apiKeyMiddleware, async (req, res) => {
 // 4. Agent Update (Report completion or error)
 app.post('/api/agent/:id/status', apiKeyMiddleware, async (req, res) => {
     try {
-        const { status } = req.body;
+        const { status, message } = req.body;
         const channel = await Channel.findByIdAndUpdate(req.params.id, { 
             status, 
+            message: message || '',
             last_checked: new Date() 
         }, { new: true });
         res.json(channel);
@@ -63,7 +64,21 @@ app.post('/api/agent/:id/status', apiKeyMiddleware, async (req, res) => {
     }
 });
 
-// 5. Delete link
+// 5. Retry (Reset status to pending)
+app.post('/api/channels/:id/retry', apiKeyMiddleware, async (req, res) => {
+    try {
+        const channel = await Channel.findByIdAndUpdate(req.params.id, { 
+            status: 'pending',
+            message: '',
+            last_checked: new Date() 
+        }, { new: true });
+        res.json(channel);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// 6. Delete link
 app.delete('/api/channels/:id', apiKeyMiddleware, async (req, res) => {
     await Channel.findByIdAndDelete(req.params.id);
     res.json({ success: true });
