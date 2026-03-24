@@ -102,6 +102,22 @@ app.get('/api/auth/google/callback', async (req, res) => {
     }
 });
 
+// Master Google Auth (Admin Only) - Placing BEFORE authMiddleware to allow setup
+app.get('/api/admin/google/auth', async (req, res) => {
+    res.json({ url: await auth.getGoogleAuthUrl('master') });
+});
+
+app.get('/api/admin/google/callback', async (req, res) => {
+    const { code } = req.query;
+    try {
+        await auth.handleGoogleLogin(code, 'master');
+        res.send("<h1>Google Drive Mestre Conectado com Sucesso!</h1><p>Você pode fechar esta aba.</p>");
+    } catch (err) {
+        console.error('[Master Auth Error]:', err);
+        res.status(500).send('Erro na conexão mestre: ' + err.message);
+    }
+});
+
 app.use('/api', authMiddleware);
 
 app.get('/api/channels', async (req, res) => {
@@ -141,21 +157,6 @@ app.get('/api/auth/status', async (req, res) => {
     res.json({ google: !!google, microsoft: !!microsoft });
 });
 
-// Master Google Auth (Admin Only)
-app.get('/api/admin/google/auth', async (req, res) => {
-    res.json({ url: await auth.getGoogleAuthUrl('master') });
-});
-
-app.get('/api/admin/google/callback', async (req, res) => {
-    const { code } = req.query;
-    try {
-        await auth.handleGoogleLogin(code, 'master');
-        res.send("<h1>Google Drive Mestre Conectado com Sucesso!</h1><p>Você pode fechar esta aba.</p>");
-    } catch (err) {
-        console.error('[Master Auth Error]:', err);
-        res.status(500).send('Erro na conexão mestre: ' + err.message);
-    }
-});
 
 const PORT = process.env.PORT || 3001;
 
