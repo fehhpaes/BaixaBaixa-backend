@@ -104,7 +104,8 @@ app.get('/api/auth/google/callback', async (req, res) => {
 
 // Master Google Auth (Admin Only) - Placing BEFORE authMiddleware to allow setup
 app.get('/api/admin/google/auth', async (req, res) => {
-    res.json({ url: await auth.getGoogleAuthUrl('master') });
+    const url = await auth.getGoogleAuthUrl('master');
+    res.redirect(url);
 });
 
 app.get('/api/admin/google/callback', async (req, res) => {
