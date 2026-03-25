@@ -172,7 +172,8 @@ app.post('/api/models/:id/record', apiKeyMiddleware, async (req, res) => {
     try {
         const model = await Model.findByIdAndUpdate(req.params.id, { 
             auto_record: true,
-            error_message: ''
+            error_message: '',
+            last_recorded: null  // Reset so posts-type models sync immediately on next poll
         }, { new: true });
         if (!model) return res.status(404).json({ message: 'Model not found' });
         res.json(model);
