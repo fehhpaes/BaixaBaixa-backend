@@ -128,10 +128,11 @@ app.get('/api/models', apiKeyMiddleware, async (req, res) => {
 // Add a model
 app.post('/api/models', apiKeyMiddleware, async (req, res) => {
     try {
-        const { name, url, save_path, quality, auto_record } = req.body;
+        const { name, url, save_path, quality, auto_record, type } = req.body;
         const platform = detectPlatform(url);
         const model = new Model({ 
             name, url, platform, 
+            type: type || 'live',
             save_path: save_path || 'recordings',
             quality: quality || '1080',
             auto_record: auto_record !== undefined ? auto_record : true
