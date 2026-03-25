@@ -80,10 +80,30 @@ class MonitorManager {
 
         await Channel.findByIdAndUpdate(channelId, { status: 'downloading' });
 
-        const cmd = `"${galleryPath}" --directory "${downloadDir}" "${url}"`;
-        exec(cmd, async () => {
-            await Channel.findByIdAndUpdate(channelId, { status: 'monitoring', last_checked: new Date() });
-            if (savePath) storage.moveFile(downloadDir, '', userId);
+        // Organized structure: {platform}/{username}/{YYYY-MM-DD}/Fotos|Videos/
+        const args = [
+            '--dest', downloadDir,
+            '-D', `{category}/{subcategory|''}/{date:%Y-%m-%d}`,
+            '-f', `{date:%Y-%m-%d}_{num:>03}.{extension}`,
+            '--postprocessor', 'classify',
+            url
+        ];
+
+        const proc = spawn(galleryPath, args);
+        let fileCount = 0;
+
+        proc.stdout.on('data', (data) => {
+            const line = data.toString().trim();
+            if (line) fileCount++;
+        });
+
+        proc.on('close', async (code) => {
+            await Channel.findByIdAndUpdate(channelId, { 
+                status: code === 0 ? 'monitoring' : 'error',
+                message: code === 0 ? `${fileCount} arquivos organizados por tipo/data` : `Erro no gallery-dl (code ${code})`,
+                last_checked: new Date() 
+            });
+            if (code === 0 && savePath) storage.moveFile(downloadDir, '', userId);
         });
     }
 
@@ -101,7 +121,16 @@ class MonitorManager {
                 ? path.resolve(__dirname, '../gallery-dl.exe') 
                 : 'gallery-dl';
             const targetDir = path.resolve(__dirname, downloadDir);
-            exec(`"${galleryPath}" --directory "${targetDir}" "${url}"`, () => {
+            // Organized downloads by type and date
+            const args = [
+                '--dest', targetDir,
+                '-D', `{category}/{subcategory|''}/{date:%Y-%m-%d}`,
+                '-f', `{date:%Y-%m-%d}_{num:>03}.{extension}`,
+                '--postprocessor', 'classify',
+                url
+            ];
+            const proc = spawn(galleryPath, args);
+            proc.on('close', () => {
                 storage.moveFile(targetDir, '', userId);
             });
         }
