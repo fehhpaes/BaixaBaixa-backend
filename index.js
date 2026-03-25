@@ -130,12 +130,15 @@ app.post('/api/models', apiKeyMiddleware, async (req, res) => {
     try {
         const { name, url, save_path, quality, auto_record, type } = req.body;
         const platform = detectPlatform(url);
+        // Posts-type models start in scanning state; live models start idle
+        const scan_status = (type === 'posts') ? 'scanning' : 'idle';
         const model = new Model({ 
             name, url, platform, 
             type: type || 'live',
+            scan_status,
+            auto_record: (type === 'posts') ? false : (auto_record !== undefined ? auto_record : true), // posts wait for user to confirm after scan
             save_path: save_path || 'recordings',
             quality: quality || '1080',
-            auto_record: auto_record !== undefined ? auto_record : true
         });
         await model.save();
         res.json(model);
@@ -197,10 +200,15 @@ app.post('/api/models/:id/stop', apiKeyMiddleware, async (req, res) => {
     }
 });
 
-// Agent: Get models to monitor (all with auto_record enabled)
+// Agent: Get models to monitor (auto_record enabled OR pending scan)
 app.get('/api/agent/models', apiKeyMiddleware, async (req, res) => {
     try {
-        const models = await Model.find({ auto_record: true });
+        const models = await Model.find({
+            $or: [
+                { auto_record: true },
+                { scan_status: 'scanning' }
+            ]
+        });
         res.json(models);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -258,6 +266,36 @@ app.post('/api/agent/models/:id/progress', apiKeyMiddleware, async (req, res) =>
         const model = await Model.findByIdAndUpdate(req.params.id, { 
             downloaded_files,
             last_recorded: new Date() 
+        }, { new: true });
+        if (!model) return res.status(404).json({ message: 'Model not found' });
+        res.json(model);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Agent: Update scan progress (files discovered so far)
+app.post('/api/agent/models/:id/scan-progress', apiKeyMiddleware, async (req, res) => {
+    try {
+        const { scan_total } = req.body;
+        const model = await Model.findByIdAndUpdate(req.params.id, {
+            scan_total,
+            scan_status: 'scanning'
+        }, { new: true });
+        if (!model) return res.status(404).json({ message: 'Model not found' });
+        res.json(model);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Agent: Finalize scan (mark as scanned with total count)
+app.post('/api/agent/models/:id/scan-complete', apiKeyMiddleware, async (req, res) => {
+    try {
+        const { scan_total } = req.body;
+        const model = await Model.findByIdAndUpdate(req.params.id, {
+            scan_total,
+            scan_status: 'scanned'
         }, { new: true });
         if (!model) return res.status(404).json({ message: 'Model not found' });
         res.json(model);

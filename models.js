@@ -35,6 +35,8 @@ const ModelSchema = new mongoose.Schema({
     total_recordings: { type: Number, default: 0 },
     recording_seconds: { type: Number, default: 0 },
     downloaded_files: { type: Number, default: 0 },
+    scan_status: { type: String, enum: ['idle', 'scanning', 'scanned'], default: 'idle' },
+    scan_total: { type: Number, default: 0 },
     current_recording_start: { type: Date },
     agent_id: { type: String },          // Which agent is handling this model
     error_message: { type: String },
